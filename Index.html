@@ -1,1 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mark Attendance for CSE Students</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #00bcd4;
+      --accent-color: #ff4081;
+      --dark-blue: #003366;
+      --light-bg: #f5f7fa;
+      --transition-speed: 0.3s;
+    }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: var(--light-bg);
+      color: var(--dark-blue);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+    h1 {
+      font-family: 'Poppins', sans-serif;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+    th {
+      background: var(--primary-color);
+      color: #fff;
+    }
+    button {
+      font-family: 'Poppins', sans-serif;
+      padding: 10px 20px;
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background var(--transition-speed);
+    }
+    button:hover {
+      background: #008ba3;
+    }
+    .container {
+      max-width: 800px;
+      width: 100%;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+    @media (max-width: 600px) {
+      table, th, td {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Mark Attendance for Students</h1>
+    <form id="attendanceForm">
+      <table>
+        <thead>
+          <tr>
+            <th>Roll No.</th>
+            <th>Admission No.</th>
+            <th>Student Name</th>
+            <th>Present?</th>
+          </tr>
+        </thead>
+        <tbody id="studentsTableBody">
+          <!-- Student rows will be inserted here -->
+        </tbody>
+      </table>
+      <button type="button" id="submitBtn">Submit Attendance</button>
+    </form>
+    <p id="statusMessage"></p>
+  </div>
 
+  <script>
+    // Airtable Credentials
+    const apiKey = "Airtable api key"; //replace with original api
+    const baseId = "airtable base id"; // replace with original base id
+    const tableName = "airtable table name"; //replace with table name
+    const airtableUrl = `https://api.airtable.com/v0/${baseId}/${tableName}`;
+
+    // List of students
+    const students = [
+      { roll: 1, admission: "00001", name: “student 1" },
+      { roll: 2, admission: "00001", name: "student 2" },
+    ];
+
+    // Function to populate table rows
+    function populateTable() {
+      const tbody = document.getElementById("studentsTableBody");
+      students.forEach(student => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${student.roll}</td>
+          <td>${student.admission}</td>
+          <td>${student.name}</td>
+          <td style="text-align:center;"><input type="checkbox" id="present_${student.roll}" /></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Call populateTable on load
+    populateTable();
+
+    // Submit Attendance function
+    document.getElementById("submitBtn").addEventListener("click", async function() {
+      const submitBtn = document.getElementById("submitBtn");
+      submitBtn.disabled = true; // Disable to prevent multiple clicks
+
+      const attendanceDate = new Date().toISOString().split('T')[0];
+      const currentTime = new Date().toLocaleTimeString();
+      const teacherName = "Teacher_Name"; // Replace with dynamic teacher name if needed
+      const subject = "Subject_Name"; // Replace with dynamic subject if needed
+      const className = "CSE";
+
+      // Prepare attendance records
+      const attendanceRecords = students.map(student => {
+        const present = document.getElementById(`present_${student.roll}`).checked;
+        return {
+          "fields": {
+            "Student name": student.name,
+            "Admission No.": student.admission,
+            "Date": attendanceDate,
+            "Time": currentTime,
+            "Teacher Name": teacherName,
+            "Subject": subject,
+            "Class": className,
+            "Status": present ? "Present" : "Absent"
+          }
+        };
+      });
+
+      try {
+        // Send data to Airtable
+        const response = await fetch(airtableUrl, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ "records": attendanceRecords })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+          document.getElementById("statusMessage").innerText = "✅ Attendance Saved Successfully!";
+          console.log("Airtable Response:", result);
+        } else {
+          throw new Error(result.error.message || "Unknown Error");
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        document.getElementById("statusMessage").innerText = "❌ Error: " + error.message;
+        alert("Error occurred while saving attendance: " + error.message);
+      } finally {
+        submitBtn.disabled = false; // Re-enable button for another submission
+      }
+    });
+  </script>
+</body>
+</html>
